@@ -281,40 +281,23 @@ body{font-family:'Heebo',sans-serif;background:var(--g50);color:var(--g800);dire
 // ═══════════════════════════════════════════════════════
 //  הכנס כאן את ה-URL של ה-Apps Script שלך:
 // ═══════════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwWCbVeBFljEplKseCrb3LpN-E6yiPmeOSkGvXm615qjJ_xJvinJwkkEGXEMc7-1IgMWg/exec';
 // ═══════════════════════════════════════════════════════
 
-function api(action, params) {
-  return new Promise((resolve, reject) => {
-    const cbName = 'apicb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-    const timeout = setTimeout(() => {
-      delete window[cbName];
-      reject(new Error('timeout'));
-    }, 15000);
-    window[cbName] = (data) => {
-      clearTimeout(timeout);
-      delete window[cbName];
-      if (sc) sc.parentNode && sc.parentNode.removeChild(sc);
-      resolve(data);
-    };
-    const url = new URL(API_URL);
-    url.searchParams.set('action', action);
-    url.searchParams.set('callback', cbName);
-    if (params) {
-      for (const [k, v] of Object.entries(params)) {
-        url.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
-      }
+async function api(action, params) {
+  const url = new URL(API_URL);
+  url.searchParams.set('action', action);
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      url.searchParams.set(k, typeof v === 'object' ? encodeURIComponent(JSON.stringify(v)) : v);
     }
-    const sc = document.createElement('script');
-    sc.src = url.toString();
-    sc.onerror = () => { clearTimeout(timeout); delete window[cbName]; reject(new Error('script error')); };
-    document.head.appendChild(sc);
-  });
+  }
+  const r = await fetch(url.toString());
+  return r.json();
 }
 
 // ── STATE ──
-const _wd = new Date().getDay();
-let ST={}, BK=[], wkOff=(_wd===5||_wd===6)?1:0, curDate=null, curHour=null, curLaptops=0;
+let ST={}, BK=[], wkOff=0, curDate=null, curHour=null, curLaptops=0;
 const DAYS=['\u05e8\u05d0\u05e9\u05d5\u05df','\u05e9\u05e0\u05d9','\u05e9\u05dc\u05d9\u05e9\u05d9','\u05e8\u05d1\u05d9\u05e2\u05d9','\u05d7\u05de\u05d9\u05e9\u05d9'];
 
 // ── INIT ──
@@ -322,6 +305,8 @@ window.addEventListener('load', async () => {
   try {
     ST = await api('getSettings');
     document.getElementById('hdr-sub').textContent = ST['\u05e9\u05dd_\u05d4\u05e9\u05db\u05d1\u05d4'] || '';
+    const wd = new Date().getDay();
+    if (wd === 5 || wd === 6) wkOff = 1;
     loadWeek();
   } catch(e) {
     showToast('\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05d4 - \u05d1\u05d3\u05d5\u05e7 \u05d0\u05ea ה-API_URL', false);
