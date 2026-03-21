@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1d4ed8">
+<title>עגלת לפטופים</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --blue:#2563EB;--blue-d:#1d4ed8;--blue-deep:#1e3a8a;
+  --blue-bg:#EFF6FF;--blue-bd:#DBEAFE;
+  --green:#16A34A;--green-bg:#F0FDF4;--green-bd:#bbf7d0;
+  --yellow:#D97706;--yellow-bg:#FFFBEB;--yellow-bd:#fde68a;
+  --red:#DC2626;--red-bg:#FEF2F2;--red-bd:#fecaca;
+  --g50:#F8FAFC;--g100:#F1F5F9;--g200:#E2E8F0;
+  --g400:#94A3B8;--g600:#475569;--g800:#1E293B;
+  --st:env(safe-area-inset-top,0px);
+  --sb:env(safe-area-inset-bottom,0px);
+}
+html,body{min-height:100%}
+body{font-family:'Heebo',sans-serif;background:var(--g50);color:var(--g800);direction:rtl;display:flex;flex-direction:column;min-height:100vh}
+
+/* ── Header ── */
+.hdr{
+  background:linear-gradient(150deg,var(--blue-d),var(--blue-deep));
+  color:#fff;flex-shrink:0;z-index:10;
+  padding:calc(var(--st) + 10px) 16px 10px;
+  display:flex;align-items:center;gap:10px;
+  box-shadow:0 2px 16px rgba(30,58,138,.4);
+  min-height:52px;
+}
+.hdr-back{background:rgba(255,255,255,.18);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+.hdr-back:active,.hdr-back:hover{background:rgba(255,255,255,.3)}
+.hdr-back.hide{opacity:0;pointer-events:none}
+.hdr-mid{flex:1;text-align:center}
+.hdr-title{font-size:16px;font-weight:800}
+.hdr-sub{font-size:11px;opacity:.75;margin-top:1px}
+.hdr-action{background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:20px;padding:6px 12px;font-family:'Heebo',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+
+/* ── Week nav ── */
+.wk{background:var(--blue-d);display:flex;align-items:center;justify-content:space-between;padding:0 16px 10px;flex-shrink:0}
+.wk-arr{background:rgba(255,255,255,.18);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.wk-arr:active{background:rgba(255,255,255,.3)}
+.wk-lbl{color:rgba(255,255,255,.9);font-size:13px;font-weight:600}
+
+/* ── Screen container ── */
+.screens{position:relative;overflow:hidden;flex:1}
+.screen{display:none}
+.screen.active{display:block;animation:scr-in .28s cubic-bezier(.4,0,.2,1)}
+.screen.slide-back.active{animation:scr-back .28s cubic-bezier(.4,0,.2,1)}
+@keyframes scr-in{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}
+@keyframes scr-back{from{opacity:0;transform:translateX(-60px)}to{opacity:1;transform:none}}
+.screen.left,.screen.right{display:none}
+
+/* ═══════════════════════════════
+   SCREEN 1 — DAY PICKER
+════════════════════════════════ */
+.day-list{padding:14px 14px calc(var(--sb) + 14px)}
+
+.day-card{
+  background:#fff;border-radius:18px;margin-bottom:12px;
+  display:flex;align-items:stretch;min-height:88px;
+  border:1.5px solid var(--g200);
+  box-shadow:0 1px 8px rgba(0,0,0,.06);
+  cursor:pointer;overflow:hidden;
+  transition:transform .12s,box-shadow .12s;
+}
+.day-card:active{transform:scale(.97);box-shadow:none}
+.day-card.past{opacity:.38;cursor:default}
+.day-card.full{cursor:default}
+
+.dc-stripe{width:7px;flex-shrink:0}
+.day-card.s-green .dc-stripe{background:var(--green)}
+.day-card.s-yellow .dc-stripe{background:var(--yellow)}
+.day-card.s-red    .dc-stripe{background:var(--red)}
+.day-card.s-gray   .dc-stripe{background:var(--g200)}
+
+.dc-body{flex:1;padding:14px 14px;display:flex;flex-direction:column;justify-content:center;gap:7px}
+.dc-row1{display:flex;align-items:center;justify-content:space-between}
+.dc-name{font-size:20px;font-weight:900;color:var(--g800)}
+.dc-date{font-size:13px;color:var(--g400);font-weight:500}
+.dc-badge{font-size:12px;font-weight:700;border-radius:20px;padding:3px 10px}
+.day-card.s-green .dc-badge{color:var(--green);background:var(--green-bg)}
+.day-card.s-yellow .dc-badge{color:var(--yellow);background:var(--yellow-bg)}
+.day-card.s-red    .dc-badge{color:var(--red);background:var(--red-bg)}
+.day-card.s-gray   .dc-badge{color:var(--g400);background:var(--g100)}
+.dc-bar{height:5px;background:var(--g100);border-radius:99px;overflow:hidden}
+.dc-fill{height:100%;border-radius:99px}
+.day-card.s-green .dc-fill{background:var(--green)}
+.day-card.s-yellow .dc-fill{background:var(--yellow)}
+.day-card.s-red    .dc-fill{background:var(--red)}
+.day-card.s-gray   .dc-fill{background:var(--g200)}
+.dc-chips{display:flex;flex-wrap:wrap;gap:4px}
+.dc-chip{background:var(--g100);color:var(--g600);font-size:11px;font-weight:600;border-radius:20px;padding:2px 8px}
+
+.dc-arr{width:44px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--g200)}
+.day-card:not(.past):not(.full) .dc-arr{color:var(--blue);opacity:.4}
+
+/* ═══════════════════════════════
+   SCREEN 2 — BOOKING FORM
+════════════════════════════════ */
+.form-scroll{padding:14px 14px 0}
+
+/* Hour grid */
+.section-label{font-size:11px;font-weight:700;color:var(--g400);letter-spacing:.6px;margin-bottom:10px;padding-right:2px}
+.hour-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+.hg{
+  border-radius:14px;border:2px solid var(--g200);background:#fff;
+  font-family:'Heebo',sans-serif;padding:10px 4px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  cursor:pointer;transition:all .15s;
+}
+.hg:active{transform:scale(.93)}
+.hg.past,.hg.full{opacity:.38;cursor:default}
+.hg.sel{border-color:var(--blue);background:var(--blue-bg);box-shadow:0 0 0 3px var(--blue-bd)}
+.hg .hn{font-size:22px;font-weight:900;color:var(--g800);line-height:1}
+.hg.sel .hn{color:var(--blue)}
+.hg .hw{font-size:10px;color:var(--g400)}
+.hg.sel .hw{color:var(--blue);opacity:.7}
+.hg .hav{font-size:10px;font-weight:700;border-radius:20px;padding:1px 6px;margin-top:2px}
+.hg.free-h .hav{color:var(--green);background:var(--green-bg)}
+.hg.part-h .hav{color:var(--yellow);background:var(--yellow-bg)}
+.hg.full   .hav{color:var(--red);background:var(--red-bg)}
+.hg.past   .hav{color:var(--g400);background:var(--g100)}
+.hg .hsp{font-size:9px;color:var(--yellow);font-weight:700}
+
+/* Slot info – who booked */
+.slot-panel{background:var(--g50);border:1px solid var(--g200);border-radius:14px;padding:12px 14px;margin-bottom:16px;display:none}
+.sp-title{font-size:11px;font-weight:700;color:var(--g400);letter-spacing:.5px;margin-bottom:8px}
+.sp-row{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:10px;padding:9px 11px;margin-bottom:6px;border:1px solid var(--g200)}
+.sp-row:last-child{margin:0}
+.sp-name{font-size:13px;font-weight:700}
+.sp-meta{font-size:11px;color:var(--g400)}
+.sp-badge{font-size:13px;font-weight:800;color:var(--blue);background:var(--blue-bg);border-radius:8px;padding:3px 10px}
+.sp-empty{font-size:13px;color:var(--g400);text-align:center;padding:6px}
+
+/* Laptop picker */
+.laptop-panel{margin-bottom:18px;display:none}
+.avail-row{display:flex;align-items:center;gap:10px;border-radius:12px;padding:10px 14px;margin-bottom:12px}
+.avail-row.ok  {background:var(--green-bg);border:1px solid var(--green-bd)}
+.avail-row.warn{background:var(--yellow-bg);border:1px solid var(--yellow-bd)}
+.avail-big{font-size:28px;font-weight:900}
+.avail-row.ok .avail-big{color:var(--green)}
+.avail-row.warn .avail-big{color:var(--yellow)}
+.avail-txt p{font-size:13px;font-weight:700;color:var(--g800)}
+.avail-txt span{font-size:11px;color:var(--g400)}
+.lp-grid{display:flex;flex-wrap:wrap;gap:8px}
+.lp-input-wrap{display:flex;flex-direction:column;gap:6px}
+.lp-input{font-size:22px;font-weight:800;text-align:center;padding:14px;transition:.2s}
+.lp-input.err{border-color:var(--red)!important;color:var(--red);box-shadow:0 0 0 3px var(--red-bd)}
+.lp-err{font-size:13px;font-weight:600;color:var(--red);min-height:18px;text-align:center}
+
+/* Form fields */
+.frow{margin-bottom:14px}
+.flabel{display:block;font-size:11px;font-weight:700;color:var(--g600);letter-spacing:.4px;margin-bottom:5px}
+.finput{width:100%;padding:13px 14px;border:1.5px solid var(--g200);border-radius:12px;font-family:'Heebo',sans-serif;font-size:16px;color:var(--g800);background:var(--g50);direction:rtl;-webkit-appearance:none;transition:.15s}
+.finput:focus{outline:none;border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px var(--blue-bd)}
+.fpair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+
+/* Sticky footer */
+.sfoot{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--g100);padding:12px 14px calc(var(--sb) + 12px);z-index:5}
+.sbtn{width:100%;padding:15px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--blue),var(--blue-d));color:#fff;font-family:'Heebo',sans-serif;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,.4);transition:.15s}
+.sbtn:active{transform:scale(.98);opacity:.9}
+.sbtn:disabled{background:var(--g200);color:var(--g400);box-shadow:none;cursor:default}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:calc(var(--sb) + 22px);left:50%;transform:translateX(-50%);padding:12px 22px;border-radius:12px;font-size:15px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:300;display:none;white-space:nowrap;animation:tin .3s cubic-bezier(.34,1.2,.64,1)}
+.toast.ok{background:var(--green);color:#fff;display:block}
+.toast.err{background:var(--red);color:#fff;display:block}
+@keyframes tin{from{opacity:0;transform:translateX(-50%) translateY(14px)}}
+
+/* ── Share popup ── */
+.spop{position:fixed;top:calc(var(--st) + 64px);left:50%;transform:translateX(-50%);background:#1E293B;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;text-align:center;z-index:400;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;max-width:90vw;min-width:240px}
+.spop.show{display:block;animation:tin .3s cubic-bezier(.34,1.2,.64,1)}
+
+/* ── Spinner ── */
+.spin-wrap{display:flex;justify-content:center;padding:60px}
+.spinner{width:36px;height:36px;border:3px solid var(--g200);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+</style>
+</head>
+<body>
+<!-- HEADER -->
+<div class="hdr" id="hdr">
+  <button class="hdr-back hide" id="back-btn" onclick="goBack()">&#8250;</button>
+  <div class="hdr-mid">
+    <div class="hdr-title" id="hdr-title">&#1506;&#1490;&#1500;&#1514; &#1500;&#1508;&#1496;&#1493;&#1508;&#1497;&#1501;</div>
+    <div class="hdr-sub"   id="hdr-sub"></div>
+  </div>
+  <button class="hdr-action" onclick="copyUrl()">&#128279; &#1513;&#1514;&#1507;</button>
+</div>
+
+<!-- WEEK NAV (screen 1 only) -->
+<div class="wk" id="wk-nav">
+  <button class="wk-arr" onclick="changeWeek(-1)">&#8249;</button>
+  <span class="wk-lbl" id="wk-lbl">...</span>
+  <button class="wk-arr" onclick="changeWeek(1)">&#8250;</button>
+</div>
+
+<!-- SCREENS -->
+<div class="screens">
+
+  <!-- S1: Day picker -->
+  <div class="screen active" id="s1">
+    <div class="day-list" id="day-list">
+      <div class="spin-wrap"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- S2: Booking form -->
+  <div class="screen right" id="s2">
+    <div class="form-scroll">
+
+      <div class="section-label">&#1489;&#1495;&#1512;/&#1497; &#1513;&#1506;&#1514; &#1513;&#1497;&#1506;&#1493;&#1512;</div>
+      <div class="hour-grid" id="hour-grid"></div>
+
+      <div class="slot-panel" id="slot-panel">
+        <div class="sp-title">&#1502;&#1497; &#1499;&#1489;&#1512; &#1513;&#1512;&#1497;&#1497;&#1503; &#1489;&#1513;&#1506;&#1492; &#1494;&#1493;</div>
+        <div id="slot-bk-list"></div>
+      </div>
+
+      <div class="laptop-panel" id="laptop-panel">
+        <div class="section-label">&#1499;&#1502;&#1492; &#1502;&#1495;&#1513;&#1489;&#1497;&#1501; &#1510;&#1512;&#1497;&#1498;?</div>
+        <div class="avail-row ok" id="avail-row">
+          <div class="avail-big" id="avail-big"></div>
+          <div class="avail-txt"><p id="avail-p"></p><span id="avail-s"></span></div>
+        </div>
+        <div class="lp-input-wrap">
+          <input class="finput lp-input" id="lp-input" type="number" min="1" inputmode="numeric"
+            placeholder="&#1492;&#1494;&#1503; &#1502;&#1505;&#1508;&#1512;" oninput="onLaptopInput(this)">
+          <div class="lp-err" id="lp-err"></div>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:4px">&#1508;&#1512;&#1496;&#1497; &#1492;&#1502;&#1493;&#1512;&#1492;</div>
+      <div class="frow">
+        <label class="flabel">&#1513;&#1501; &#1502;&#1500;&#1488; *</label>
+        <input class="finput" id="f-name" type="text" placeholder="&#1513;&#1501; &#1492;&#1502;&#1493;&#1512;&#1492;" autocomplete="name">
+      </div>
+      <div class="frow">
+        <label class="flabel">&#1502;&#1497;&#1497;&#1500; *</label>
+        <input class="finput" id="f-email" type="email" placeholder="teacher@school.edu.il" dir="ltr" autocomplete="email">
+      </div>
+      <div class="fpair">
+        <div>
+          <label class="flabel">&#1499;&#1497;&#1514;&#1492; *</label>
+          <input class="finput" id="f-cls" type="text" placeholder="&#1494;'1">
+        </div>
+        <div>
+          <label class="flabel">&#1502;&#1511;&#1510;&#1493;&#1506; *</label>
+          <input class="finput" id="f-subj" type="text" placeholder="&#1502;&#1514;&#1502;&#1496;&#1497;&#1511;&#1492;" list="sl">
+          <datalist id="sl">
+            <option value="&#1502;&#1514;&#1502;&#1496;&#1497;&#1511;&#1492;"><option value="&#1506;&#1489;&#1512;&#1497;&#1514;"><option value="&#1488;&#1504;&#1490;&#1500;&#1497;&#1514;">
+            <option value="&#1502;&#1491;&#1506;&#1497;&#1501;"><option value="&#1492;&#1497;&#1505;&#1496;&#1493;&#1512;&#1497;&#1492;"><option value="&#1490;&#1497;&#1488;&#1493;&#1490;&#1512;&#1508;&#1497;&#1492;">
+            <option value="&#1505;&#1508;&#1512;&#1493;&#1514;"><option value="&#1488;&#1494;&#1512;&#1495;&#1493;&#1514;"><option value="&#1502;&#1495;&#1513;&#1489;&#1497;&#1501;"><option value="&#1514;&#1504;&#34;&#1498;">
+          </datalist>
+        </div>
+      </div>
+    </div>
+    <div class="sfoot">
+      <button class="sbtn" id="sub-btn" disabled onclick="submitBooking()">&#10003; &#1513;&#1502;&#1493;&#1512; &#1492;&#1494;&#1502;&#1504;&#1492;</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="spop" id="spop">
+  <div style="font-weight:700;margin-bottom:3px">&#10003; &#1511;&#1497;&#1513;&#1493;&#1512; &#1492;&#1493;&#1506;&#1514;&#1511;!</div>
+  <div id="spop-url" style="opacity:.6;font-size:11px;direction:ltr;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  הכנס כאן את ה-URL של ה-Apps Script שלך:
+// ═══════════════════════════════════════════════════════
+const API_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+// ═══════════════════════════════════════════════════════
+
+async function api(action, params) {
+  const url = new URL(API_URL);
+  url.searchParams.set('action', action);
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      url.searchParams.set(k, typeof v === 'object' ? encodeURIComponent(JSON.stringify(v)) : v);
+    }
+  }
+  const r = await fetch(url.toString());
+  return r.json();
+}
+
+// ── STATE ──
+let ST={}, BK=[], wkOff=0, curDate=null, curHour=null, curLaptops=0;
+const DAYS=['\u05e8\u05d0\u05e9\u05d5\u05df','\u05e9\u05e0\u05d9','\u05e9\u05dc\u05d9\u05e9\u05d9','\u05e8\u05d1\u05d9\u05e2\u05d9','\u05d7\u05de\u05d9\u05e9\u05d9'];
+
+// ── INIT ──
+window.addEventListener('load', async () => {
+  try {
+    ST = await api('getSettings');
+    document.getElementById('hdr-sub').textContent = ST['\u05e9\u05dd_\u05d4\u05e9\u05db\u05d1\u05d4'] || '';
+    const wd = new Date().getDay();
+    if (wd === 5 || wd === 6) wkOff = 1;
+    loadWeek();
+  } catch(e) {
+    showToast('\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05d4 - \u05d1\u05d3\u05d5\u05e7 \u05d0\u05ea ה-API_URL', false);
+  }
+});
+
+// ── WEEK ──
+function changeWeek(d){ wkOff+=d; loadWeek(); }
+function weekDays(){
+  const t=new Date(); t.setHours(0,0,0,0);
+  const s=new Date(t); s.setDate(s.getDate()-s.getDay()+wkOff*7);
+  return Array.from({length:5},(_,i)=>{ const d=new Date(s); d.setDate(d.getDate()+i); return d; });
+}
+function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0') }
+function fmt(i){ const[y,m,d]=i.split('-'); return d+'/'+m+'/'+y }
+
+async function loadWeek(){
+  const days=weekDays();
+  document.getElementById('wk-lbl').textContent=
+    days[0].toLocaleDateString('he-IL',{day:'numeric',month:'short'})+' \u2013 '+
+    days[4].toLocaleDateString('he-IL',{day:'numeric',month:'short'});
+  document.getElementById('day-list').innerHTML='<div class="spin-wrap"><div class="spinner"></div></div>';
+  const s=new Date(days[0]); s.setDate(s.getDate()-s.getDay());
+  try {
+    BK = await api('getWeekBookings', { weekStart: s.toISOString() });
+    renderDays(days);
+  } catch(e) { showToast('\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05ea \u05d4\u05d6\u05de\u05e0\u05d5\u05ea', false); }
+}
+
+// ── S1: DAY CARDS ──
+function renderDays(days){
+  const max=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd'])||25;
+  const totalH=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05e9\u05e2\u05d5\u05ea'])||8;
+  const todISO=iso(new Date()), todDate=new Date(); todDate.setHours(0,0,0,0);
+  let h='';
+  days.forEach((d,i)=>{
+    const di=iso(d), past=d<todDate;
+    const db=BK.filter(b=>b.date===di);
+    let freeH=0;
+    for(let hr=1;hr<=totalH;hr++){
+      const u=db.filter(b=>String(b.hour)===String(hr)).reduce((s,b)=>s+parseInt(b.laptops),0);
+      if(u<max) freeH++;
+    }
+    const used=db.reduce((s,b)=>s+parseInt(b.laptops),0);
+    const pct=Math.round((used/(max*totalH))*100);
+    let sc='s-green';
+    if(past) sc='s-gray';
+    else if(freeH===0) sc='s-red';
+    else if(freeH<=totalH*.4) sc='s-yellow';
+    const badge=past?'\u05e2\u05d1\u05e8':freeH===0?'\u05de\u05dc\u05d0':freeH+' \u05e9\u05e2\u05d5\u05ea \u05e4\u05e0\u05d5\u05d9\u05d5\u05ea';
+    const chips=db.slice(0,3).map(b=>`<div class="dc-chip">${b.teacher.split(' ')[0]}</div>`).join('')+(db.length>3?`<div class="dc-chip">+${db.length-3}</div>`:'');
+    const click=!past&&freeH>0?`onclick="pickDay('${di}','${DAYS[i]}')"`:past?'':'';
+    h+=`<div class="day-card ${sc}${di===todISO?' today':''}${freeH===0&&!past?' full':''}" ${click}>
+      <div class="dc-stripe"></div>
+      <div class="dc-body">
+        <div class="dc-row1">
+          <div class="dc-name">\u05d9\u05d5\u05dd ${DAYS[i]} <span style="font-size:14px;font-weight:500;color:var(--g400)">${d.getDate()}/${d.getMonth()+1}</span></div>
+          <div class="dc-badge">${badge}</div>
+        </div>
+        <div class="dc-bar"><div class="dc-fill" style="width:${pct}%"></div></div>
+        ${chips?`<div class="dc-chips">${chips}</div>`:''}
+      </div>
+      ${!past?`<div class="dc-arr">${freeH>0?'&#8249;':''}</div>`:''}
+    </div>`;
+  });
+  document.getElementById('day-list').innerHTML=h;
+}
+
+// ── S2: HOUR GRID ──
+function pickDay(date, dayName){
+  curDate=date; curHour=null; curLaptops=0;
+  document.getElementById('hdr-title').textContent='\u05d9\u05d5\u05dd '+dayName;
+  document.getElementById('hdr-sub').textContent=fmt(date);
+  buildHourGrid(date);
+  goTo('s2');
+}
+
+function buildHourGrid(date){
+  const max=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd'])||25;
+  const totalH=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05e9\u05e2\u05d5\u05ea'])||8;
+  const todDate=new Date(); todDate.setHours(0,0,0,0);
+  const past=new Date(date)<todDate;
+  let h='';
+  for(let hr=1;hr<=totalH;hr++){
+    const sb=BK.filter(b=>b.date===date&&String(b.hour)===String(hr));
+    const used=sb.reduce((s,b)=>s+parseInt(b.laptops),0);
+    const avail=max-used;
+    let cls=past?'past':avail===0?'full':(used/max)>=.5?'part-h':'free-h';
+    const canClick=!past&&avail>0;
+    const lbl=past?'\u05e2\u05d1\u05e8':avail===0?'\u05de\u05dc\u05d0':avail+' \u05e4\u05e0\u05d5\u05d9';
+    const sp=hr===3?`<div class="hsp">\u2600\ufe0f \u05d1\u05d5\u05e7\u05e8 \u05d8\u05d5\u05d1</div>`:'';
+    h+=`<button class="hg ${cls}" ${canClick?`onclick="pickHour(${hr},${avail})"`:''} ${!canClick?'disabled':''}>
+      <div class="hn">${hr}</div><div class="hw">\u05e9\u05e2\u05d4</div>
+      <div class="hav">${lbl}</div>${sp}
+    </button>`;
+  }
+  document.getElementById('hour-grid').innerHTML=h;
+  document.getElementById('slot-panel').style.display='none';
+  document.getElementById('laptop-panel').style.display='none';
+  document.getElementById('sub-btn').disabled=true;
+}
+
+function pickHour(hr, avail){
+  curHour=hr; curLaptops=0;
+  document.querySelectorAll('.hg').forEach((b,i)=>b.classList.toggle('sel',i===hr-1));
+  const sb=BK.filter(b=>b.date===curDate&&String(b.hour)===String(hr));
+  const panel=document.getElementById('slot-panel');
+  document.getElementById('slot-bk-list').innerHTML=sb.length
+    ?sb.map(b=>`<div class="sp-row"><div><div class="sp-name">${b.teacher}</div><div class="sp-meta">\u05db\u05d9\u05ea\u05d4 ${b.cls}${b.subject?' \u2022 '+b.subject:''}</div></div><div class="sp-badge">\u{1F4BB} ${b.laptops}</div></div>`).join('')
+    :'<div class="sp-empty">\u05d0\u05d9\u05df \u05d4\u05d6\u05de\u05e0\u05d5\u05ea \u05e2\u05d3\u05d9\u05d9\u05df</div>';
+  panel.style.display='block';
+  const max=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd'])||25;
+  const lpPanel=document.getElementById('laptop-panel');
+  lpPanel.style.display='block';
+  const ar=document.getElementById('avail-row');
+  ar.className='avail-row '+(avail<max*.5?'warn':'ok');
+  document.getElementById('avail-big').textContent=avail;
+  document.getElementById('avail-p').textContent='\u05de\u05d7\u05e9\u05d1\u05d9\u05dd \u05e4\u05e0\u05d5\u05d9\u05d9\u05dd';
+  document.getElementById('avail-s').textContent='\u05de\u05ea\u05d5\u05da '+max+' \u05d1\u05e2\u05d2\u05dc\u05d4';
+  const inp=document.getElementById('lp-input');
+  inp.value=''; inp.max=avail;
+  inp.className='finput lp-input';
+  document.getElementById('lp-err').textContent='';
+  document.getElementById('sub-btn').disabled=true;
+  setTimeout(()=>lpPanel.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
+}
+
+function onLaptopInput(inp){
+  const val=parseInt(inp.value)||0;
+  const max=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd'])||25;
+  const avail=parseInt(inp.max)||max;
+  const err=document.getElementById('lp-err');
+  if(val<1||isNaN(val)){
+    curLaptops=0; inp.className='finput lp-input'; err.textContent='';
+    document.getElementById('sub-btn').disabled=true;
+  } else if(val>avail){
+    curLaptops=0; inp.className='finput lp-input err';
+    err.textContent='\u05d9\u05e9 \u05e8\u05e7 '+avail+' \u05de\u05d7\u05e9\u05d1\u05d9\u05dd \u05e4\u05e0\u05d5\u05d9\u05d9\u05dd \u05d1\u05e9\u05e2\u05d4 \u05d6\u05d5';
+    document.getElementById('sub-btn').disabled=true;
+  } else if(val>max){
+    curLaptops=0; inp.className='finput lp-input err';
+    err.textContent='\u05d9\u05e9 \u05e8\u05e7 '+max+' \u05de\u05d7\u05e9\u05d1\u05d9\u05dd \u05d1\u05e2\u05d2\u05dc\u05d4';
+    document.getElementById('sub-btn').disabled=true;
+  } else {
+    curLaptops=val; inp.className='finput lp-input'; err.textContent='';
+    document.getElementById('sub-btn').disabled=false;
+  }
+}
+
+// ── SUBMIT ──
+async function submitBooking(){
+  const name=document.getElementById('f-name').value.trim();
+  const email=document.getElementById('f-email').value.trim();
+  const cls=document.getElementById('f-cls').value.trim();
+  const subj=document.getElementById('f-subj').value.trim();
+  if(!name){shake('f-name');return}
+  if(!email||!email.includes('@')){shake('f-email');return}
+  if(!cls){shake('f-cls');return}
+  if(!subj){shake('f-subj');return}
+  if(!curLaptops){showToast('\u05d1\u05d7\u05e8/\u05d9 \u05de\u05e1\u05e4\u05e8 \u05de\u05d7\u05e9\u05d1\u05d9\u05dd',false);return}
+  const btn=document.getElementById('sub-btn');
+  btn.disabled=true; btn.textContent='\u05e9\u05d5\u05de\u05e8...';
+  try {
+    const r = await api('addBooking', { data: {date:curDate,hour:curHour,teacher:name,email,cls,subject:subj,laptops:curLaptops} });
+    btn.disabled=false; btn.textContent='\u2713 \u05e9\u05de\u05d5\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4';
+    if(r.ok){ showToast(r.message,true); loadWeek(); goBack(); }
+    else showToast(r.message,false);
+  } catch(e){
+    btn.disabled=false; btn.textContent='\u2713 \u05e9\u05de\u05d5\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4';
+    showToast('\u05e9\u05d2\u05d9\u05d0\u05d4: '+e.message,false);
+  }
+}
+
+// ── NAVIGATION ──
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s=>s.className='screen');
+  document.getElementById(id).className='screen active';
+  window.scrollTo({top:0,behavior:'instant'});
+  document.getElementById('back-btn').classList.remove('hide');
+  document.getElementById('wk-nav').style.display='none';
+}
+function goBack(){
+  document.querySelectorAll('.screen').forEach(s=>s.className='screen');
+  document.getElementById('s1').className='screen slide-back active';
+  window.scrollTo({top:0,behavior:'instant'});
+  document.getElementById('back-btn').classList.add('hide');
+  document.getElementById('wk-nav').style.display='';
+  document.getElementById('hdr-title').textContent='\u05e2\u05d2\u05dc\u05ea \u05dc\u05e4\u05d8\u05d5\u05e4\u05d9\u05dd';
+  document.getElementById('hdr-sub').textContent=ST['\u05e9\u05dd_\u05d4\u05e9\u05db\u05d1\u05d4']||'';
+}
+
+// ── SHARE ──
+function copyUrl(){
+  const url=window.location.href.split('?')[0];
+  navigator.clipboard&&navigator.clipboard.writeText(url).then(()=>showSharePop(url)).catch(()=>{ fbCopy(url); showSharePop(url); }) || (() => { fbCopy(url); showSharePop(url); })();
+}
+function fbCopy(t){ const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();try{document.execCommand('copy');}catch(_){}document.body.removeChild(a); }
+function showSharePop(url){ document.getElementById('spop-url').textContent=url; const p=document.getElementById('spop'); p.classList.add('show'); setTimeout(()=>p.classList.remove('show'),3200); }
+
+// ── UTILS ──
+function shake(id){const e=document.getElementById(id);e.style.borderColor='var(--red)';e.animate([{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'translateX(0)'}],{duration:240,iterations:2});setTimeout(()=>e.style.borderColor='',1600);}
+function showToast(msg,ok){const t=document.getElementById('toast');t.textContent=(ok?'\u2713 ':'\u2717 ')+msg;t.className='toast '+(ok?'ok':'err');setTimeout(()=>t.className='toast',3500);}
+</script>
+</body>
+</html>
