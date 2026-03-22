@@ -307,21 +307,15 @@ async function fbPush(path, data) {
 
 // ── Apps Script (email only) ──────────────────────
 function gasCall(action, params) {
-  const cb = 'cb_' + Date.now();
-  window[cb] = (d) => { delete window[cb]; };
   const url = new URL(GAS_URL);
   url.searchParams.set('action', action);
-  url.searchParams.set('callback', cb);
+  url.searchParams.set('callback', 'ignore');
   if (params) Object.entries(params).forEach(([k,v]) => {
-    if (typeof v === 'object') {
-      url.searchParams.set(k, encodeURIComponent(JSON.stringify(v)));
-    } else {
-      url.searchParams.set(k, String(v));
-    }
+    url.searchParams.set(k, typeof v === 'object' ? encodeURIComponent(JSON.stringify(v)) : String(v));
   });
-  const s = document.createElement('script');
-  s.src = url.toString();
-  document.head.appendChild(s);
+  // Use image trick to bypass CORS (fire and forget)
+  const img = new Image();
+  img.src = url.toString();
 }
 
 
