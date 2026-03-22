@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1d4ed8">
 <title>עגלת לפטופים</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -184,6 +184,7 @@ body{font-family:'Heebo',sans-serif;background:var(--g50);color:var(--g800);dire
 .spinner{width:36px;height:36px;border:3px solid var(--g200);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
+
 </style>
 </head>
 <body>
@@ -277,45 +278,78 @@ body{font-family:'Heebo',sans-serif;background:var(--g50);color:var(--g800);dire
   <div id="spop-url" style="opacity:.6;font-size:11px;direction:ltr;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px"></div>
 </div>
 
-<script>
-// ═══════════════════════════════════════════════════════
-//  הכנס כאן את ה-URL של ה-Apps Script שלך:
-// ═══════════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwWCbVeBFljEplKseCrb3LpN-E6yiPmeOSkGvXm615qjJ_xJvinJwkkEGXEMc7-1IgMWg/exec';
-// ═══════════════════════════════════════════════════════
+<script type="module">
+// ═══════════════════════════════════════════════════
+// הגדרות Firebase ו-Apps Script:
+const FB_URL  = 'https://laptop-cart-default-rtdb.europe-west1.firebasedatabase.app';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwWCbVeBFljEplKseCrb3LpN-E6yiPmeOSkGvXm615qjJ_xJvinJwkkEGXEMc7-1IgMWg/exec';
+// ═══════════════════════════════════════════════════
 
-async function api(action, params) {
-  const url = new URL(API_URL);
-  url.searchParams.set('action', action);
-  if (params) {
-    for (const [k, v] of Object.entries(params)) {
-      url.searchParams.set(k, typeof v === 'object' ? encodeURIComponent(JSON.stringify(v)) : v);
-    }
-  }
-  const r = await fetch(url.toString());
+// ── Firebase API ──────────────────────────────────
+async function fbGet(path) {
+  const r = await fetch(FB_URL + path + '.json');
+  const d = await r.json();
+  return d;
+}
+async function fbSet(path, data) {
+  await fetch(FB_URL + path + '.json', {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+}
+async function fbPush(path, data) {
+  const r = await fetch(FB_URL + path + '.json', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
   return r.json();
 }
 
-// ── STATE ──
-let ST={}, BK=[], wkOff=0, curDate=null, curHour=null, curLaptops=0;
+// ── Apps Script (email only) ──────────────────────
+function gasCall(action, params) {
+  const cb = 'cb_' + Date.now();
+  window[cb] = (d) => { delete window[cb]; };
+  const url = new URL(GAS_URL);
+  url.searchParams.set('action', action);
+  url.searchParams.set('callback', cb);
+  if (params) Object.entries(params).forEach(([k,v]) =>
+    url.searchParams.set(k, typeof v==='object'?JSON.stringify(v):String(v)));
+  const s = document.createElement('script');
+  s.src = url.toString();
+  document.head.appendChild(s);
+}
+
+// ── STATE ──────────────────────────────────────────
+const _wd = new Date().getDay();
+let ST={}, BK=[], wkOff=(_wd===5||_wd===6)?1:0;
+let curDate=null, curHour=null, curLaptops=0;
 const DAYS=['\u05e8\u05d0\u05e9\u05d5\u05df','\u05e9\u05e0\u05d9','\u05e9\u05dc\u05d9\u05e9\u05d9','\u05e8\u05d1\u05d9\u05e2\u05d9','\u05d7\u05de\u05d9\u05e9\u05d9'];
 
-// ── INIT ──
+// ── INIT ───────────────────────────────────────────
 window.addEventListener('load', async () => {
   try {
-    ST = await api('getSettings');
+    let settings = await fbGet('/settings');
+    if (!settings) {
+      settings = {
+        '\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd': 25,
+        '\u05de\u05e1\u05e4\u05e8_\u05e9\u05e2\u05d5\u05ea': 8,
+        '\u05e9\u05dd_\u05d4\u05e9\u05db\u05d1\u05d4': '\u05e9\u05db\u05d1\u05d4 \u05d6\u05f3',
+        '\u05de\u05d9\u05d9\u05dc_\u05e8\u05db\u05d6': ''
+      };
+      await fbSet('/settings', settings);
+    }
+    ST = settings;
     document.getElementById('hdr-sub').textContent = ST['\u05e9\u05dd_\u05d4\u05e9\u05db\u05d1\u05d4'] || '';
-    const wd = new Date().getDay();
-    if (wd === 5 || wd === 6) wkOff = 1;
     loadWeek();
   } catch(e) {
-    showToast('\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05d4 - \u05d1\u05d3\u05d5\u05e7 \u05d0\u05ea ה-API_URL', false);
+    showToast('\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05d4', false);
   }
 });
 
-// ── WEEK ──
-function changeWeek(d){ wkOff+=d; loadWeek(); }
-function weekDays(){
+// ── WEEK ───────────────────────────────────────────
+window.changeWeek = (d) => { wkOff+=d; loadWeek(); };
+
+function weekDays() {
   const t=new Date(); t.setHours(0,0,0,0);
   const s=new Date(t); s.setDate(s.getDate()-s.getDay()+wkOff*7);
   return Array.from({length:5},(_,i)=>{ const d=new Date(s); d.setDate(d.getDate()+i); return d; });
@@ -323,26 +357,33 @@ function weekDays(){
 function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0') }
 function fmt(i){ const[y,m,d]=i.split('-'); return d+'/'+m+'/'+y }
 
-async function loadWeek(){
-  const days=weekDays();
-  document.getElementById('wk-lbl').textContent=
-    days[0].toLocaleDateString('he-IL',{day:'numeric',month:'short'})+' \u2013 '+
+async function loadWeek() {
+  const days = weekDays();
+  document.getElementById('wk-lbl').textContent =
+    days[0].toLocaleDateString('he-IL',{day:'numeric',month:'short'}) + ' \u2013 ' +
     days[4].toLocaleDateString('he-IL',{day:'numeric',month:'short'});
-  document.getElementById('day-list').innerHTML='<div class="spin-wrap"><div class="spinner"></div></div>';
-  const s=new Date(days[0]); s.setDate(s.getDate()-s.getDay());
+  document.getElementById('day-list').innerHTML = '<div class="spin-wrap"><div class="spinner"></div></div>';
+
+  const startISO = iso(days[0]);
+  const endISO   = iso(days[4]);
   try {
-    BK = await api('getWeekBookings', { weekStart: s.toISOString() });
+    const all = await fbGet('/bookings');
+    BK = all ? Object.entries(all)
+      .map(([fbId,b]) => ({...b, fbId}))
+      .filter(b => b.date >= startISO && b.date <= endISO) : [];
     renderDays(days);
-  } catch(e) { showToast('\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05ea \u05d4\u05d6\u05de\u05e0\u05d5\u05ea', false); }
+  } catch(e) {
+    showToast('\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05ea \u05d4\u05d6\u05de\u05e0\u05d5\u05ea', false);
+  }
 }
 
-// ── S1: DAY CARDS ──
-function renderDays(days){
-  const max=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd'])||25;
-  const totalH=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05e9\u05e2\u05d5\u05ea'])||8;
-  const todISO=iso(new Date()), todDate=new Date(); todDate.setHours(0,0,0,0);
-  let h='';
-  days.forEach((d,i)=>{
+// ── S1: DAY CARDS ──────────────────────────────────
+function renderDays(days) {
+  const max    = parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd'])||25;
+  const totalH = parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05e9\u05e2\u05d5\u05ea'])||8;
+  const todISO = iso(new Date()), todDate = new Date(); todDate.setHours(0,0,0,0);
+  let h = '';
+  days.forEach((d,i) => {
     const di=iso(d), past=d<todDate;
     const db=BK.filter(b=>b.date===di);
     let freeH=0;
@@ -372,23 +413,23 @@ function renderDays(days){
       ${!past?`<div class="dc-arr">${freeH>0?'&#8249;':''}</div>`:''}
     </div>`;
   });
-  document.getElementById('day-list').innerHTML=h;
+  document.getElementById('day-list').innerHTML = h;
 }
 
-// ── S2: HOUR GRID ──
-function pickDay(date, dayName){
+// ── S2: HOUR GRID ──────────────────────────────────
+window.pickDay = (date, dayName) => {
   curDate=date; curHour=null; curLaptops=0;
   document.getElementById('hdr-title').textContent='\u05d9\u05d5\u05dd '+dayName;
   document.getElementById('hdr-sub').textContent=fmt(date);
   buildHourGrid(date);
   goTo('s2');
-}
+};
 
-function buildHourGrid(date){
-  const max=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd'])||25;
-  const totalH=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05e9\u05e2\u05d5\u05ea'])||8;
-  const todDate=new Date(); todDate.setHours(0,0,0,0);
-  const past=new Date(date)<todDate;
+function buildHourGrid(date) {
+  const max    = parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd'])||25;
+  const totalH = parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05e9\u05e2\u05d5\u05ea'])||8;
+  const todDate = new Date(); todDate.setHours(0,0,0,0);
+  const past = new Date(date) < todDate;
   let h='';
   for(let hr=1;hr<=totalH;hr++){
     const sb=BK.filter(b=>b.date===date&&String(b.hour)===String(hr));
@@ -409,15 +450,14 @@ function buildHourGrid(date){
   document.getElementById('sub-btn').disabled=true;
 }
 
-function pickHour(hr, avail){
+window.pickHour = (hr, avail) => {
   curHour=hr; curLaptops=0;
   document.querySelectorAll('.hg').forEach((b,i)=>b.classList.toggle('sel',i===hr-1));
   const sb=BK.filter(b=>b.date===curDate&&String(b.hour)===String(hr));
-  const panel=document.getElementById('slot-panel');
   document.getElementById('slot-bk-list').innerHTML=sb.length
     ?sb.map(b=>`<div class="sp-row"><div><div class="sp-name">${b.teacher}</div><div class="sp-meta">\u05db\u05d9\u05ea\u05d4 ${b.cls}${b.subject?' \u2022 '+b.subject:''}</div></div><div class="sp-badge">\u{1F4BB} ${b.laptops}</div></div>`).join('')
     :'<div class="sp-empty">\u05d0\u05d9\u05df \u05d4\u05d6\u05de\u05e0\u05d5\u05ea \u05e2\u05d3\u05d9\u05d9\u05df</div>';
-  panel.style.display='block';
+  document.getElementById('slot-panel').style.display='block';
   const max=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd'])||25;
   const lpPanel=document.getElementById('laptop-panel');
   lpPanel.style.display='block';
@@ -432,9 +472,9 @@ function pickHour(hr, avail){
   document.getElementById('lp-err').textContent='';
   document.getElementById('sub-btn').disabled=true;
   setTimeout(()=>lpPanel.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
-}
+};
 
-function onLaptopInput(inp){
+window.onLaptopInput = (inp) => {
   const val=parseInt(inp.value)||0;
   const max=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd'])||25;
   const avail=parseInt(inp.max)||max;
@@ -446,49 +486,62 @@ function onLaptopInput(inp){
     curLaptops=0; inp.className='finput lp-input err';
     err.textContent='\u05d9\u05e9 \u05e8\u05e7 '+avail+' \u05de\u05d7\u05e9\u05d1\u05d9\u05dd \u05e4\u05e0\u05d5\u05d9\u05d9\u05dd \u05d1\u05e9\u05e2\u05d4 \u05d6\u05d5';
     document.getElementById('sub-btn').disabled=true;
-  } else if(val>max){
-    curLaptops=0; inp.className='finput lp-input err';
-    err.textContent='\u05d9\u05e9 \u05e8\u05e7 '+max+' \u05de\u05d7\u05e9\u05d1\u05d9\u05dd \u05d1\u05e2\u05d2\u05dc\u05d4';
-    document.getElementById('sub-btn').disabled=true;
   } else {
     curLaptops=val; inp.className='finput lp-input'; err.textContent='';
     document.getElementById('sub-btn').disabled=false;
   }
-}
+};
 
-// ── SUBMIT ──
-async function submitBooking(){
-  const name=document.getElementById('f-name').value.trim();
-  const email=document.getElementById('f-email').value.trim();
-  const cls=document.getElementById('f-cls').value.trim();
-  const subj=document.getElementById('f-subj').value.trim();
-  if(!name){shake('f-name');return}
-  if(!email||!email.includes('@')){shake('f-email');return}
-  if(!cls){shake('f-cls');return}
-  if(!subj){shake('f-subj');return}
-  if(!curLaptops){showToast('\u05d1\u05d7\u05e8/\u05d9 \u05de\u05e1\u05e4\u05e8 \u05de\u05d7\u05e9\u05d1\u05d9\u05dd',false);return}
+// ── SUBMIT ─────────────────────────────────────────
+window.submitBooking = async () => {
+  const name  = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const cls   = document.getElementById('f-cls').value.trim();
+  const subj  = document.getElementById('f-subj').value.trim();
+  if(!name)  { shake('f-name');  return }
+  if(!email||!email.includes('@')) { shake('f-email'); return }
+  if(!cls)   { shake('f-cls');   return }
+  if(!subj)  { shake('f-subj');  return }
+  if(!curLaptops){ showToast('\u05d1\u05d7\u05e8/\u05d9 \u05de\u05e1\u05e4\u05e8 \u05de\u05d7\u05e9\u05d1\u05d9\u05dd',false); return }
+
   const btn=document.getElementById('sub-btn');
   btn.disabled=true; btn.textContent='\u05e9\u05d5\u05de\u05e8...';
-  try {
-    const r = await api('addBooking', { data: {date:curDate,hour:curHour,teacher:name,email,cls,subject:subj,laptops:curLaptops} });
-    btn.disabled=false; btn.textContent='\u2713 \u05e9\u05de\u05d5\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4';
-    if(r.ok){ showToast(r.message,true); loadWeek(); goBack(); }
-    else showToast(r.message,false);
-  } catch(e){
-    btn.disabled=false; btn.textContent='\u2713 \u05e9\u05de\u05d5\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4';
-    showToast('\u05e9\u05d2\u05d9\u05d0\u05d4: '+e.message,false);
-  }
-}
 
-// ── NAVIGATION ──
-function goTo(id){
+  const max=parseInt(ST['\u05de\u05e1\u05e4\u05e8_\u05de\u05d7\u05e9\u05d1\u05d9\u05dd'])||25;
+  const slotBks=BK.filter(b=>b.date===curDate&&String(b.hour)===String(curHour));
+  const used=slotBks.reduce((s,b)=>s+parseInt(b.laptops),0);
+  const avail=max-used;
+  if(curLaptops>avail){
+    btn.disabled=false; btn.textContent='\u2713 \u05e9\u05de\u05d5\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4';
+    showToast('\u05e0\u05e9\u05d0\u05e8\u05d5 \u05e8\u05e7 '+avail+' \u05de\u05d7\u05e9\u05d1\u05d9\u05dd \u05e4\u05e0\u05d5\u05d9\u05d9\u05dd', false);
+    return;
+  }
+
+  const ts = Date.now();
+  const booking = { date:curDate, hour:curHour, teacher:name, email, cls, subject:subj, laptops:curLaptops, id:ts };
+
+  try {
+    await fbPush('/bookings', booking);
+    gasCall('addBooking', { data: booking });
+    btn.disabled=false; btn.textContent='\u2713 \u05e9\u05de\u05d5\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4';
+    showToast('\u05d4\u05d6\u05de\u05e0\u05d4 \u05e0\u05e8\u05e9\u05de\u05d4! \u05d0\u05d9\u05e9\u05d5\u05e8 \u05e0\u05e9\u05dc\u05d7 \u05dc\u05de\u05d9\u05d9\u05dc', true);
+    loadWeek();
+    goBack();
+  } catch(e) {
+    btn.disabled=false; btn.textContent='\u2713 \u05e9\u05de\u05d5\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4';
+    showToast('\u05e9\u05d2\u05d9\u05d0\u05d4: '+e.message, false);
+  }
+};
+
+// ── NAVIGATION ─────────────────────────────────────
+window.goTo = (id) => {
   document.querySelectorAll('.screen').forEach(s=>s.className='screen');
   document.getElementById(id).className='screen active';
   window.scrollTo({top:0,behavior:'instant'});
   document.getElementById('back-btn').classList.remove('hide');
   document.getElementById('wk-nav').style.display='none';
-}
-function goBack(){
+};
+window.goBack = () => {
   document.querySelectorAll('.screen').forEach(s=>s.className='screen');
   document.getElementById('s1').className='screen slide-back active';
   window.scrollTo({top:0,behavior:'instant'});
@@ -496,17 +549,17 @@ function goBack(){
   document.getElementById('wk-nav').style.display='';
   document.getElementById('hdr-title').textContent='\u05e2\u05d2\u05dc\u05ea \u05dc\u05e4\u05d8\u05d5\u05e4\u05d9\u05dd';
   document.getElementById('hdr-sub').textContent=ST['\u05e9\u05dd_\u05d4\u05e9\u05db\u05d1\u05d4']||'';
-}
+};
 
-// ── SHARE ──
-function copyUrl(){
+// ── SHARE ──────────────────────────────────────────
+window.copyUrl = () => {
   const url=window.location.href.split('?')[0];
-  navigator.clipboard&&navigator.clipboard.writeText(url).then(()=>showSharePop(url)).catch(()=>{ fbCopy(url); showSharePop(url); }) || (() => { fbCopy(url); showSharePop(url); })();
-}
-function fbCopy(t){ const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();try{document.execCommand('copy');}catch(_){}document.body.removeChild(a); }
-function showSharePop(url){ document.getElementById('spop-url').textContent=url; const p=document.getElementById('spop'); p.classList.add('show'); setTimeout(()=>p.classList.remove('show'),3200); }
+  navigator.clipboard&&navigator.clipboard.writeText(url).then(()=>showSharePop(url)).catch(()=>{fbCopy(url);showSharePop(url);})||(fbCopy(url),showSharePop(url));
+};
+function fbCopy(t){const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();try{document.execCommand('copy');}catch(_){}document.body.removeChild(a);}
+function showSharePop(url){document.getElementById('spop-url').textContent=url;const p=document.getElementById('spop');p.classList.add('show');setTimeout(()=>p.classList.remove('show'),3200);}
 
-// ── UTILS ──
+// ── UTILS ──────────────────────────────────────────
 function shake(id){const e=document.getElementById(id);e.style.borderColor='var(--red)';e.animate([{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'translateX(0)'}],{duration:240,iterations:2});setTimeout(()=>e.style.borderColor='',1600);}
 function showToast(msg,ok){const t=document.getElementById('toast');t.textContent=(ok?'\u2713 ':'\u2717 ')+msg;t.className='toast '+(ok?'ok':'err');setTimeout(()=>t.className='toast',3500);}
 </script>
