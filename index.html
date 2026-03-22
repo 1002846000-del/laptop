@@ -312,11 +312,41 @@ function gasCall(action, params) {
   const url = new URL(GAS_URL);
   url.searchParams.set('action', action);
   url.searchParams.set('callback', cb);
-  if (params) Object.entries(params).forEach(([k,v]) =>
-    url.searchParams.set(k, typeof v==='object'?JSON.stringify(v):String(v)));
+  if (params) Object.entries(params).forEach(([k,v]) => {
+    if (typeof v === 'object') {
+      url.searchParams.set(k, encodeURIComponent(JSON.stringify(v)));
+    } else {
+      url.searchParams.set(k, String(v));
+    }
+  });
   const s = document.createElement('script');
   s.src = url.toString();
   document.head.appendChild(s);
+}
+
+
+// ── Cancel from email link ─────────────────────────
+async function handleCancelFromUrl(fbId, email) {
+  document.body.innerHTML = `
+    <div style="font-family:'Heebo',sans-serif;direction:rtl;max-width:440px;margin:40px auto;padding:20px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:16px;">🗑️</div>
+      <h2 style="margin-bottom:8px;" id="cancel-title">מבטל הזמנה...</h2>
+      <p style="color:#94a3b8;" id="cancel-msg">אנא המתן</p>
+    </div>`;
+  try {
+    const all = await fbGet('/bookings');
+    if (!all) { document.getElementById('cancel-title').textContent = 'הזמנה לא נמצאה'; return; }
+    // Find by fbId
+    const entry = Object.entries(all).find(([k]) => k === fbId);
+    if (!entry) { document.getElementById('cancel-title').textContent = 'הזמנה לא נמצאה'; document.getElementById('cancel-msg').textContent = 'יתכן שכבר בוטלה'; return; }
+    const [key, bk] = entry;
+    await fbDelete('/bookings/' + key);
+    document.getElementById('cancel-title').textContent = '✅ ההזמנה בוטלה!';
+    document.getElementById('cancel-msg').textContent = bk.teacher + ' – ' + bk.date + ' שעה ' + bk.hour;
+  } catch(e) {
+    document.getElementById('cancel-title').textContent = 'שגיאה';
+    document.getElementById('cancel-msg').textContent = e.message;
+  }
 }
 
 // ── STATE ──────────────────────────────────────────
@@ -327,6 +357,15 @@ const DAYS=['\u05e8\u05d0\u05e9\u05d5\u05df','\u05e9\u05e0\u05d9','\u05e9\u05dc\
 
 // ── INIT ───────────────────────────────────────────
 window.addEventListener('load', async () => {
+  // Handle cancel from email link
+  const urlParams = new URLSearchParams(window.location.search);
+  const cancelId  = urlParams.get('cancel');
+  const cancelEmail = urlParams.get('email');
+  if (cancelId) {
+    await handleCancelFromUrl(cancelId, cancelEmail || '');
+    return;
+  }
+
   try {
     let settings = await fbGet('/settings');
     if (!settings) {
@@ -521,8 +560,12 @@ window.submitBooking = async () => {
   const booking = { date:curDate, hour:curHour, teacher:name, email, cls, subject:subj, laptops:curLaptops, id:ts };
 
   try {
-    await fbPush('/bookings', booking);
-    gasCall('addBooking', { data: booking });
+    const pushed = await fbPush('/bookings', booking);
+    const fbKey = pushed.name; // Firebase auto-generated key
+    const cancelBase = window.location.href.split('?')[0];
+    const cancelUrl = cancelBase + '?cancel=' + fbKey;
+    const bookingWithCancel = {...booking, cancelUrl};
+    gasCall('addBooking', { data: bookingWithCancel });
     btn.disabled=false; btn.textContent='\u2713 \u05e9\u05de\u05d5\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4';
     showToast('\u05d4\u05d6\u05de\u05e0\u05d4 \u05e0\u05e8\u05e9\u05de\u05d4! \u05d0\u05d9\u05e9\u05d5\u05e8 \u05e0\u05e9\u05dc\u05d7 \u05dc\u05de\u05d9\u05d9\u05dc', true);
     loadWeek();
