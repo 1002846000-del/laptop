@@ -287,20 +287,20 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbwWCbVeBFljEplKseCrb3Lp
 async function api(action, params) {
   const url = new URL(API_URL);
   url.searchParams.set('action', action);
+  // Cache-buster: forces proxy to fetch fresh data every time
+  url.searchParams.set('_t', Date.now());
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       url.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
     }
   }
-  // Try direct fetch first, then proxy fallback
   const directUrl = url.toString();
   const proxyUrl  = 'https://api.allorigins.win/get?url=' + encodeURIComponent(directUrl);
   try {
-    const r = await fetch(proxyUrl);
+    const r = await fetch(proxyUrl + '&_t=' + Date.now());
     const d = await r.json();
     return JSON.parse(d.contents);
   } catch(e) {
-    // fallback: try corsproxy
     const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(directUrl));
     return r2.json();
   }
