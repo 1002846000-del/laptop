@@ -287,23 +287,24 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbwWCbVeBFljEplKseCrb3Lp
 async function api(action, params) {
   const url = new URL(API_URL);
   url.searchParams.set('action', action);
-  // Cache-buster: forces proxy to fetch fresh data every time
   url.searchParams.set('_t', Date.now());
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       url.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
     }
   }
-  const directUrl = url.toString();
-  const proxyUrl  = 'https://api.allorigins.win/get?url=' + encodeURIComponent(directUrl);
-  try {
-    const r = await fetch(proxyUrl + '&_t=' + Date.now());
-    const d = await r.json();
-    return JSON.parse(d.contents);
-  } catch(e) {
-    const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(directUrl));
-    return r2.json();
-  }
+  const direct = url.toString();
+  const t = Date.now();
+  // Race 3 proxies — use whichever responds first
+  const proxies = [
+    fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(direct) + '&_t=' + t)
+      .then(function(r){ return r.json(); }).then(function(d){ return JSON.parse(d.contents); }),
+    fetch('https://corsproxy.io/?' + encodeURIComponent(direct))
+      .then(function(r){ return r.json(); }),
+    fetch('https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(direct))
+      .then(function(r){ return r.json(); }),
+  ];
+  return Promise.any(proxies);
 }
 
 // ── STATE ──
@@ -313,12 +314,28 @@ const DAYS=['\u05e8\u05d0\u05e9\u05d5\u05df','\u05e9\u05e0\u05d9','\u05e9\u05dc\
 
 // ── INIT ──
 window.addEventListener('load', async () => {
+  const wd = new Date().getDay();
+  if (wd === 5 || wd === 6) wkOff = 1;
+  // Load from cache for instant display
+  const cached = localStorage.getItem('laptop_settings');
+  if (cached) {
+    try {
+      ST = JSON.parse(cached);
+      document.getElementById('hdr-sub').textContent = ST['\u05e9\u05dd_\u05d4\u05e9\u05db\u05d1\u05d4'] || '';
+      loadWeek();
+      // Refresh settings silently in background
+      api('getSettings').then(function(s){ ST=s; localStorage.setItem('laptop_settings',JSON.stringify(s)); document.getElementById('hdr-sub').textContent=s['\u05e9\u05dd_\u05d4\u05e9\u05db\u05d1\u05d4']||''; }).catch(function(){});
+      return;
+    } catch(e) {}
+  }
+  // No cache - load fresh
   try {
     ST = await api('getSettings');
+    localStorage.setItem('laptop_settings', JSON.stringify(ST));
     document.getElementById('hdr-sub').textContent = ST['\u05e9\u05dd_\u05d4\u05e9\u05db\u05d1\u05d4'] || '';
     loadWeek();
   } catch(e) {
-    showToast('\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05d4 - \u05d1\u05d3\u05d5\u05e7 \u05d0\u05ea ה-API_URL', false);
+    showToast('\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05d4', false);
   }
 });
 
