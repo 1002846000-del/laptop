@@ -292,10 +292,18 @@ async function api(action, params) {
       url.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
     }
   }
-  // Use corsproxy to bypass CORS on mobile
-  const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url.toString());
-  const r = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
-  return r.json();
+  // Try direct fetch first, then proxy fallback
+  const directUrl = url.toString();
+  const proxyUrl  = 'https://api.allorigins.win/get?url=' + encodeURIComponent(directUrl);
+  try {
+    const r = await fetch(proxyUrl);
+    const d = await r.json();
+    return JSON.parse(d.contents);
+  } catch(e) {
+    // fallback: try corsproxy
+    const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(directUrl));
+    return r2.json();
+  }
 }
 
 // ── STATE ──
