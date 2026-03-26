@@ -293,18 +293,15 @@ async function api(action, params) {
       url.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
     }
   }
-  const direct = url.toString();
-  const t = Date.now();
-  // Race 3 proxies — use whichever responds first
-  const proxies = [
-    fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(direct) + '&_t=' + t)
-      .then(function(r){ return r.json(); }).then(function(d){ return JSON.parse(d.contents); }),
-    fetch('https://corsproxy.io/?' + encodeURIComponent(direct))
-      .then(function(r){ return r.json(); }),
-    fetch('https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(direct))
-      .then(function(r){ return r.json(); }),
-  ];
-  return Promise.any(proxies);
+  // Use Cloudflare Worker as proxy — fast & reliable
+  const WORKER = 'https://broad-waterfall-a6c4laptop-proxy.1002846000.workers.dev/';
+  const proxyUrl = WORKER + '?' + url.searchParams.toString();
+  const r = await fetch(proxyUrl);
+  const text = await r.text();
+  // Response is JSONP: callback({...}) — extract JSON
+  const match = text.match(/^[^(]+\((.+)\)\s*;?\s*$/);
+  if (match) return JSON.parse(match[1]);
+  return JSON.parse(text);
 }
 
 // ── STATE ──
